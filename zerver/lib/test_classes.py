@@ -37,9 +37,9 @@ from django.test.client import BOUNDARY, MULTIPART_CONTENT, ClientHandler, encod
 from django.test.testcases import SerializeMixin
 from django.urls import resolve
 from django.utils import translation
+from django.utils.encoding import force_bytes
 from django.utils.module_loading import import_string
 from django.utils.timezone import now as timezone_now
-from django.utils.encoding import force_bytes
 from fakeldap import MockLDAP
 from firebase_admin import exceptions as firebase_exceptions
 from openapi_core.contrib.django import DjangoOpenAPIRequest, DjangoOpenAPIResponse
@@ -2660,29 +2660,33 @@ You can fix this by adding "{complete_event_type}" to ALL_EVENT_TYPES for this w
             else:
                 self.url = self.build_webhook_url()
         else:
-            # If the test already initialized a custom self.url, then append the secret 
+            # If the test already initialized a custom self.url, then append the secret
             # to the query string instead of overwriting the entire URL.
-            if getattr(self, "WEBHOOK_TEST_SECRET", None) is not None and "webhook_secret=" not in self.url:
+            if (
+                getattr(self, "WEBHOOK_TEST_SECRET", None) is not None
+                and "webhook_secret=" not in self.url
+            ):
                 separator = "&" if "?" in self.url else "?"
                 self.url = f"{self.url}{separator}webhook_secret={quote(self.WEBHOOK_TEST_SECRET)}"
-        
+
         payload = self.get_payload(fixture_name)
         raw_payload = self.get_body(fixture_name)
         if content_type is not None:
             extra["content_type"] = content_type
 
         if (
-            getattr(self, "WEBHOOK_SIGNATURE_HEADER", None) is not None 
+            getattr(self, "WEBHOOK_SIGNATURE_HEADER", None) is not None
             and getattr(self, "WEBHOOK_TEST_SECRET", None) is not None
         ):
             django_header = "HTTP_" + self.WEBHOOK_SIGNATURE_HEADER.upper().replace("-", "_")
-            
-            computed_hash = "sha256=" + hmac.new(
-                force_bytes(self.WEBHOOK_TEST_SECRET),
-                force_bytes(raw_payload),
-                hashlib.sha256
-            ).hexdigest()
-            
+
+            computed_hash = (
+                "sha256="
+                + hmac.new(
+                    force_bytes(self.WEBHOOK_TEST_SECRET), force_bytes(raw_payload), hashlib.sha256
+                ).hexdigest()
+            )
+
             extra[django_header] = computed_hash
 
         headers = call_fixture_to_headers(self.webhook_dir_name, fixture_name)

@@ -1018,6 +1018,7 @@ if settings.DEVELOPMENT:
     v1_api_mobile_patterns += dev_urls.v1_api_mobile_patterns
     # Route to recalculate hashes when a secret is included in the developer integrations panel
     from zerver.webhooks.github.view import recalculate_github_signature
+
     urls += [
         path("json/developer_panel/recalculate_signature", recalculate_github_signature),
     ]
