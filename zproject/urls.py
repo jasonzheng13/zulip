@@ -1026,6 +1026,10 @@ if settings.DEVELOPMENT:
         path("api/v1/", include(v1_api_mobile_patterns)),
     ]
 
+urls += [
+    path("api/v1/", include(v1_api_mobile_patterns)),
+]
+
 # Healthcheck URL
 urls += [path("health", health)]
 

@@ -7,6 +7,7 @@ import orjson
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils.encoding import force_bytes
 from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpRequest, HttpResponse
 from pydantic import Json
 from typing_extensions import override
 
@@ -49,6 +50,10 @@ fixture_to_headers = default_fixture_to_headers("HTTP_X_GITHUB_EVENT")
 
 
 def github_fixture_to_headers(filename: str) -> dict[str, str]:
+    '''
+    This function is used to generate the header in the Integrations
+    developer panel on load.
+    '''
     if "__" in filename:
         event_type = filename.split("__", 1)[0]
     else:
@@ -100,6 +105,8 @@ def recalculate_github_signature(request: HttpRequest) -> JsonResponse:
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
+
+fixture_to_headers = github_fixture_to_headers
 
 TOPIC_FOR_DISCUSSION = "{repo} discussion #{number}: {title}"
 DISCUSSION_TEMPLATES = {
