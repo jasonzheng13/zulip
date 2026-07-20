@@ -244,8 +244,19 @@ function update_url(): void {
         const url = `${url_base}${integration_name}?${params.toString()}`;
         url_field!.value = url;
 
-        void sync_signature_headers(integration_name, webhook_secret);
+        schedule_signature_sync(integration_name, webhook_secret);
     }
+}
+
+// Debounces the signature recompute so rapid typing doesn't fire an API
+// request per keystroke -- the request only goes out once typing pauses.
+let signature_sync_timeout: ReturnType<typeof setTimeout> | undefined;
+
+function schedule_signature_sync(integration_name: string, webhook_secret: string): void {
+    clearTimeout(signature_sync_timeout);
+    signature_sync_timeout = setTimeout(() => {
+        void sync_signature_headers(integration_name, webhook_secret);
+    }, 300);
 }
 
 async function sync_signature_headers(integration_name: string, webhook_secret: string): Promise<void> {
@@ -310,8 +321,11 @@ async function sync_signature_headers(integration_name: string, webhook_secret: 
     });
 }
 
-// Bind directly to inputs, and add a small micro-timeout for programmatic dropdown loads
-$(document).on("input change keyup", "input#webhook_secret, textarea#fixture_body", () => {
+// Bind to "input" alone -- it already fires on typing, pasting, and
+// autofill, so layering "change" and "keyup" on the same handler here
+// only fired update_url() (and therefore the signature API call)
+// redundantly, multiple times per keystroke.
+$(document).on("input", "input#webhook_secret, textarea#fixture_body", () => {
     update_url();
 });
 
@@ -526,6 +540,4 @@ $(() => {
     $("#stream_name").on("change", update_url);
 
     $("#topic_name").on("change", update_url);
-
-    $("#webhook_secret").on("change", update_url);
 });
