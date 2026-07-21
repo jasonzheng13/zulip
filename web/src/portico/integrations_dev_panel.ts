@@ -244,6 +244,24 @@ function update_url(): void {
         const url = `${url_base}${integration_name}?${params.toString()}`;
         url_field!.value = url;
 
+        sync_signature_headers(integration_name, webhook_secret);
+    }
+}
+
+// Bind directly to inputs, and add a small micro-timeout for programmatic dropdown loads
+$(document).on("input change keyup", "input#webhook_secret, textarea#fixture_body", () => {
+    update_url();
+});
+
+$(document).on("change", "select#fixture_name", () => {
+    setTimeout(() => {
+        update_url();
+    }, 50);
+});
+
+// Run immediately on initial load to synchronize state cleanly
+update_url();
+
         void sync_signature_headers(integration_name, webhook_secret);
     }
 
