@@ -1,4 +1,5 @@
 import os
+import re
 from unittest import mock
 
 from django.test import Client
@@ -161,6 +162,36 @@ class PublicURLTest(ZulipTestCase):
                         m.output,
                         [f"ERROR:django.request:Internal Server Error: {url}"],
                     )
+
+
+class UrlConfigurationTest(ZulipTestCase):
+    def test_mobile_api_registered_unconditionally(self) -> None:
+        """
+        The mobile API (api/v1/) must be registered regardless of
+        settings.DEVELOPMENT -- it's needed in production. This has
+        regressed multiple times: a dev-only route got added right next
+        to this line and accidentally dragged it inside an
+        `if settings.DEVELOPMENT:` block, which silently breaks the
+        entire mobile API in production while looking completely fine
+        in any dev environment (where DEVELOPMENT is always True, so
+        the route is always present locally either way).
+        """
+        with open("zproject/urls.py") as f:
+            source = f.read()
+
+        match = re.search(
+            r'^([ \t]*)urls \+= \[\s*\n\s*path\("api/v1/", include\(v1_api_mobile_patterns\)\),?\s*\n\s*\]',
+            source,
+            re.MULTILINE,
+        )
+        assert match is not None, "Could not find the api/v1/ mobile patterns registration in zproject/urls.py"
+        self.assertEqual(
+            match.group(1),
+            "",
+            "The api/v1/ mobile patterns registration must not be indented -- it "
+            "needs to run unconditionally, not nested inside an "
+            "`if settings.DEVELOPMENT:` block (or any other conditional).",
+        )
 
 
 class ErrorPageTest(ZulipTestCase):
