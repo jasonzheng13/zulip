@@ -48,7 +48,7 @@ const integrations_api_response_schema = z.object({
     result: z.string(),
 });
 
-let last_computed_header_key: string | null = null; //Tracks the current signature header for auto-clearing when switching integrations
+let last_computed_header_key: string | null = null; // Tracks the current signature header for auto-clearing when switching integrations
 
 type ServerResponse = z.infer<typeof integrations_api_response_schema>;
 
@@ -185,7 +185,7 @@ function load_fixture_body(fixture_name: string): void {
         4,
     );
     const webhook_secret = $<HTMLInputElement>("input#webhook_secret").val()!;
-    void sync_signature_headers(integration_name, webhook_secret);
+    sync_signature_headers(integration_name, webhook_secret);
 
     return;
 }
@@ -248,24 +248,75 @@ function update_url(): void {
     }
 }
 
-// Bind directly to inputs, and add a small micro-timeout for programmatic dropdown loads
-$(document).on("input change keyup", "input#webhook_secret, textarea#fixture_body", () => {
-    update_url();
-});
+function sync_signature_headers(integration_name: string, webhook_secret: string): void {
+    const $custom_headers_field = $<HTMLTextAreaElement>("textarea#custom_http_headers");
+    const current_headers_raw = $custom_headers_field.val()?.toString().trim() ?? "";
 
-$(document).on("change", "select#fixture_name", () => {
-    setTimeout(() => {
-        update_url();
-    }, 50);
-});
-
-// Run immediately on initial load to synchronize state cleanly
-update_url();
-
-        void sync_signature_headers(integration_name, webhook_secret);
+    let headers_object: Record<string, string> = {};
+    if (current_headers_raw !== "") {
+        try {
+            headers_object = z
+                .record(z.string(), z.string())
+                .parse(JSON.parse(current_headers_raw));
+        } catch {
+            headers_object = {};
+        }
     }
 
-    return;
+    if (last_computed_header_key && last_computed_header_key in headers_object) {
+        Reflect.deleteProperty(headers_object, last_computed_header_key);
+    }
+
+    if (webhook_secret.trim() === "") {
+        last_computed_header_key = null;
+        if (Object.keys(headers_object).length === 0) {
+            $custom_headers_field.val("{}");
+        } else {
+            $custom_headers_field.val(JSON.stringify(headers_object, null, 4));
+        }
+        return;
+    }
+
+    const raw_payload = $<HTMLTextAreaElement>("textarea#fixture_body").val() ?? "";
+    let cleaned_payload = raw_payload;
+
+    try {
+        cleaned_payload = JSON.stringify(JSON.parse(raw_payload));
+    } catch {
+        cleaned_payload = raw_payload.trim();
+    }
+
+    channel.post({
+        url: "/devtools/integrations/recalculate_signature",
+        data: JSON.stringify({
+            secret: webhook_secret,
+            payload: cleaned_payload,
+            integration_name,
+        }),
+        success(raw_data: unknown) {
+            const data = z
+                .object({
+                    supported: z.optional(z.boolean()),
+                    clear_signature: z.optional(z.boolean()),
+                    header_key: z.string(),
+                    signature: z.string(),
+                })
+                .parse(raw_data);
+
+            if (!data.supported || data.clear_signature) {
+                last_computed_header_key = null;
+                if (Object.keys(headers_object).length === 0) {
+                    $custom_headers_field.val("{}");
+                } else {
+                    $custom_headers_field.val(JSON.stringify(headers_object, null, 4));
+                }
+            } else {
+                headers_object[data.header_key] = data.signature;
+                last_computed_header_key = data.header_key;
+                $custom_headers_field.val(JSON.stringify(headers_object, null, 4));
+            }
+        },
+    });
 }
 
 async function sync_signature_headers(integration_name: string, webhook_secret: string): Promise<void> {
@@ -534,6 +585,4 @@ $(() => {
     $("#topic_name").on("change", update_url);
 
     $("#webhook_secret").on("change", update_url);
-
-    $("#fixture_body").on("change", update_url);
 });

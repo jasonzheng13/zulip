@@ -2,8 +2,6 @@ import asyncio
 import base64
 import hashlib
 import hmac
-import hashlib
-import hmac
 import os
 import re
 import shutil
@@ -39,6 +37,7 @@ from django.test.client import BOUNDARY, MULTIPART_CONTENT, ClientHandler, encod
 from django.test.testcases import SerializeMixin
 from django.urls import resolve
 from django.utils import translation
+from django.utils.encoding import force_bytes
 from django.utils.module_loading import import_string
 from django.utils.timezone import now as timezone_now
 from django.utils.encoding import force_bytes
@@ -2673,7 +2672,7 @@ You can fix this by adding "{complete_event_type}" to ALL_EVENT_TYPES for this w
         payload = self.get_payload(fixture_name)
         if content_type is not None:
             extra["content_type"] = content_type
-            
+
         signature_header_name = getattr(self, "WEBHOOK_SIGNATURE_HEADER", None)
         if signature_header_name is not None:
             try:

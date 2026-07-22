@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import orjson
+from django.test import override_settings
 
 from zerver.lib.message import truncate_topic
 from zerver.lib.test_classes import WebhookTestCase
@@ -30,7 +31,7 @@ TOPIC_SPONSORS = "sponsors"
 class GitHubWebhookTest(WebhookTestCase):
     WEBHOOK_SIGNATURE_HEADER = "X_HUB_Signature_256"
     WEBHOOK_TEST_SECRET = "testingthis"
-    
+
     def test_ping_event(self) -> None:
         expected_message = "GitHub webhook has been successfully configured by TomaszKolek."
         self.check_webhook("ping", TOPIC_REPO, expected_message)
