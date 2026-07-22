@@ -8,6 +8,12 @@ from zerver.lib.test_classes import WebhookTestCase
 from zerver.lib.webhooks.git import COMMITS_LIMIT
 from zerver.models import CustomProfileField
 from zerver.models.realms import get_realm
+from zerver.lib.webhooks.common import (
+    standardize_headers,
+    call_fixture_to_headers
+)
+
+from django.test import override_settings
 
 TOPIC_REPO = "public-repo"
 TOPIC_ISSUE = "public-repo / issue #2 Spelling error in the README file"

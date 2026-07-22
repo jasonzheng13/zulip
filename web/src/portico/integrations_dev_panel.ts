@@ -319,6 +319,68 @@ function sync_signature_headers(integration_name: string, webhook_secret: string
     });
 }
 
+async function sync_signature_headers(integration_name: string, webhook_secret: string): Promise<void> {
+    const custom_headers_field = $<HTMLTextAreaElement>("textarea#custom_http_headers");
+    const current_headers_raw = custom_headers_field.val()?.toString().trim() || "";
+    
+    let headers_object: Record<string, string> = {};
+    if (current_headers_raw !== "") {
+        try {
+            headers_object = JSON.parse(current_headers_raw);
+        } catch {
+            headers_object = {};
+        }
+    }
+
+    // AUTO-CLEAR: Always strip out the exact key we assigned last time if tracked
+    if (last_computed_header_key && last_computed_header_key in headers_object) {
+        delete headers_object[last_computed_header_key];
+    }
+
+    // CRITICAL: If the secret field is empty, do not ping the backend. Clear row instantly.
+    if (webhook_secret.trim() === "") {
+        last_computed_header_key = null;
+        if (Object.keys(headers_object).length === 0) {
+            custom_headers_field.val("{}");
+        } else {
+            custom_headers_field.val(JSON.stringify(headers_object, null, 4));
+        }
+        return;
+    }
+
+    const raw_payload = $<HTMLTextAreaElement>("textarea#fixture_body").val() || "";
+    let cleaned_payload = raw_payload;
+
+    try {
+        cleaned_payload = JSON.stringify(JSON.parse(raw_payload));
+    } catch {
+        cleaned_payload = raw_payload.trim();
+    }
+
+    channel.post({
+        url: "/devtools/integrations/recalculate_signature",
+        data: JSON.stringify({ 
+            secret: webhook_secret, 
+            payload: cleaned_payload,
+            integration_name: integration_name 
+        }),
+        success(data: any) {
+            if (!data.supported || data.clear_signature) {
+                last_computed_header_key = null;
+                if (Object.keys(headers_object).length === 0) {
+                    custom_headers_field.val("{}");
+                } else {
+                    custom_headers_field.val(JSON.stringify(headers_object, null, 4));
+                }
+            } else {
+                headers_object[data.header_key] = data.signature;
+                last_computed_header_key = data.header_key;
+                custom_headers_field.val(JSON.stringify(headers_object, null, 4));
+            }
+        }
+    });
+}
+
 // API callers: These methods handle communicating with the Python backend API.
 function handle_unsuccessful_response(response: JQuery.jqXHR): void {
     const parsed = z.object({msg: z.string()}).safeParse(response.responseJSON);

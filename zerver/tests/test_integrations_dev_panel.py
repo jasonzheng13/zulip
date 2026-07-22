@@ -3,6 +3,8 @@ import hmac
 from unittest.mock import MagicMock, patch
 
 import orjson
+import hmac
+import hashlib
 from django.core.exceptions import ValidationError
 
 from zerver.lib.test_classes import ZulipTestCase

@@ -2,7 +2,11 @@ import re
 from collections.abc import Callable
 from datetime import datetime
 
+from pathlib import Path
+
 from django.http import HttpRequest, HttpResponse
+from django.conf import settings
+from django.utils.encoding import force_bytes
 from pydantic import Json
 from typing_extensions import override
 
@@ -42,6 +46,21 @@ from zerver.lib.webhooks.git import (
 from zerver.models import UserProfile
 
 fixture_to_headers = default_fixture_to_headers("HTTP_X_GITHUB_EVENT")
+
+def github_fixture_to_headers(filename: str) -> dict[str, str]:
+    '''
+    This function is used to generate the header in the Integrations
+    developer panel on load.
+    '''
+    if "__" in filename:
+        event_type = filename.split("__", 1)[0]
+    else:
+        event_type = filename
+    return {
+        "HTTP_X_GITHUB_EVENT": event_type,
+    }
+
+fixture_to_headers = github_fixture_to_headers
 
 TOPIC_FOR_DISCUSSION = "{repo} discussion #{number}: {title}"
 DISCUSSION_TEMPLATES = {
@@ -1219,7 +1238,7 @@ def api_github_webhook(
     validate_webhook_delivery(request, "X_HUB_Signature_256", "sha256")
 
     header_event = get_event_header(request, "X-GitHub-Event", "GitHub")
-
+    
     # Ignore events from private repositories if the URL option is set
     if (
         "repository" in payload

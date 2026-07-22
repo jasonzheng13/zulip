@@ -13,6 +13,9 @@ from django.test import Client
 from django.utils.encoding import force_bytes
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import Json
+import hmac
+import hashlib
+from collections.abc import Callable
 
 from zerver.lib.exceptions import JsonableError, ResourceNotFoundError
 from zerver.lib.integrations import INCOMING_WEBHOOK_INTEGRATIONS
