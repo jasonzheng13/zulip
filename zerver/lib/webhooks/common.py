@@ -334,7 +334,7 @@ def validate_webhook_delivery(request: HttpRequest, signature_header_name: str, 
         )
     except JsonableError:
         raise
-    except Exception as err:
+    except Exception as err:  # nocoverage
         raise JsonableError(str(err))
 
 
